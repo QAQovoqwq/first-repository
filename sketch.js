@@ -17,6 +17,7 @@
 //arduino
 
 let circles = [];
+let type = ['blue','red','gray'] ;
 
 let graymaxradius = 100;
 let expansionSpeed = 2;
@@ -33,19 +34,23 @@ function draw() {
   background(240);
   movecircle();
   drawcircle();
-  rangeinfluence();
-  updateRadius();
-  
+  // rangeinfluence();
+  // updateRadius();
+  redaddrange();
+  console.log(circles[0]);
+
+  //redaddrange();
+
   
 }
 
 function generatecircles(){
   let Propagationprobability;   //传播概率
   let Decayprobability;         //衰退概率
-  let propagationrange;         //传播范围
+  let propagationrange = graymaxradius;         //传播范围
   let Diffusionrate = 1;            //扩散快慢
   let Networkdensity = 1;           //网络密度
-  let color;
+  
 
   let no = Networkdensity;
 
@@ -63,7 +68,7 @@ function generatecircles(){
       Decayprobability,
       propagationrange,
       Diffusionrate,
-      color:'yellow'
+      color:type[1]
     };
     circles.push(circledata);
   }
@@ -137,5 +142,14 @@ function updateRadius() {
   if (currentradius > graymaxradius) 
   {
     currentradius = 0; 
+  }
+}
+
+function redaddrange()
+{
+  let hasRedCircle = circles.some(circle => circle.color === type[1]);
+  if (hasRedCircle) {
+    rangeinfluence();
+    updateRadius();
   }
 }
