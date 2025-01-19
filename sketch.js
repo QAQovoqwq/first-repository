@@ -25,18 +25,19 @@ function setup() {
 
 function draw() {
   background(240);
+  movecircle();
   drawcircle();
-
+  
 
   
 }
 
 function generatecircles(){
-  let Propagationprobability;//传播概率
-  let Decayprobability;//衰退概率
-  let propagationrange;//传播范围
-  let Diffusionrate;//扩散快慢
-  let Networkdensity;//网络密度
+  let Propagationprobability;   //传播概率
+  let Decayprobability;         //衰退概率
+  let propagationrange;         //传播范围
+  let Diffusionrate;            //扩散快慢
+  let Networkdensity;           //网络密度
   let color;
 
   let no = Networkdensity;
@@ -46,8 +47,10 @@ function generatecircles(){
   for(let i = 0; i < 20; i++) {
     let circledata = {
       no:i+1,
-      positonx:random(50,windowWidth-50),
-      positony:random(50,windowHeight-50),
+      positonX:random(50,windowWidth-50),
+      positonY:random(50,windowHeight-50),
+      dx:random(-5, 5), //x方向速度
+      dy:random(-5, 5), //y方向速度
       radius:50,
       Propagationprobability,
       Decayprobability,
@@ -61,19 +64,39 @@ function generatecircles(){
 
 }
 
+function movecircle()
+{ 
+  for(let circle of circles)
+  {
+    circle.positonX += circle.dx;
+    circle.positonY += circle.dy;
+
+    if(circle.positonX - circle.radius < 0 || circle.positonX + circle.radius>windowWidth)
+    {
+      circle.dx *= -1;
+    }
+    
+    if (circle.positonY - circle.radius < 0 || circle.positonY + circle.radius > windowHeight) 
+    {
+      circle.dy *= -1; 
+    }
+  }
+
+}
+
+
 function drawcircle()
 {
-    for(let circle of circles)
-    {
-      fill(circle.color);
-      ellipse(circle.positonx,circle.positony,circle.radius);
-      
-      fill(0);
-      textAlign(CENTER, CENTER);
-      text(circle.no, circle.positonx, circle.positony);
+  for(let circle of circles)
+  {
+    fill(circle.color);
+    ellipse(circle.positonX,circle.positonY,circle.radius);
+    
+    fill(0);
+    textAlign(CENTER, CENTER);
+    text(circle.no, circle.positonX, circle.positonY);
 
-
-    }
+  }
 
 
 }
