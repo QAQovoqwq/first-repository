@@ -24,13 +24,15 @@ let thresholdvalue = 2;     //传播阈值
 let Informationnum = 1;     //信息源
 let Networkdensity = 20;    //网络密度
 let timeThreshold = 3000;   //时间阈值ms
-let staretime = 0;           //初始时间
+let staretime = 0;           // 程序开始时间
+let Decayprobability = 5000;         //衰退概率
 
 let graymaxradius = 100;
 let expansionSpeed = 2;
 let currentradius = 0;
 
-
+let hasExecuted = false; 
+let lastRedDisappearTime = null; //最后一个红球消失的时间
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -47,6 +49,7 @@ function draw() {
   // updateRadius();
   bluetored();
   Informationsource();
+  redtogray();
   
   //console.log(circles[0]);
   console.log(circles[staretime]);
@@ -56,10 +59,7 @@ function draw() {
 
 function generatecircles(){
   let Propagationprobability;   //传播概率
-  let Decayprobability;         //衰退概率
   let propagationrange = graymaxradius;         //传播范围
-  
-
   
   let no = Networkdensity;
 
@@ -73,13 +73,14 @@ function generatecircles(){
       radius:50,
       staretime:staretime,
       Propagationprobability,
-      Decayprobability,
-      propagationrange,
+      Decayprobability:Decayprobability,
+      propagationrange:graymaxradius,
       Diffusionrate:Diffusionrate,
       Propagationvalue:Propagationvalue,
       color:type[0],
       startTime: millis(), 
-      currentRadius: 0  // 为每个圆圈添加自己的currentRadius属性
+      currentRadius: 0,  // 为每个圆圈添加自己的currentRadius属性
+      redStartTime: null  // 添加新变量记录变红的时间点
     };
     circles.push(circledata);
   }
@@ -183,10 +184,9 @@ function bluetored() {
             }
           }
             
-          if (circle1.Propagationvalue >= thresholdvalue) 
-          {
-            circle1.color = type[1];
-            circle1.startTime = null;
+          if (circle1.Propagationvalue >= thresholdvalue) {
+            circle1.color = type[1];           // 变为红色
+            circle1.redStartTime = millis();   // 记录变红的时间点
           }
         }
       }
@@ -194,19 +194,61 @@ function bluetored() {
   }
 
 
-function Informationsource()
-{ 
+function Informationsource() { 
   let hasRedCircle = circles.some(circle => circle.color === type[1]);
-  if (!hasRedCircle)
-  {
-    let randomNumber = floor(random(1, Networkdensity + 1));
-    for (let circle1 of circles) 
-    {
-      if(circle1.no === randomNumber)
-      {
-        circle1.color = type[1];
-        console.log(circle1.no);
+  
+  if (!hasRedCircle) {
+    if (lastRedDisappearTime === null) {
+      lastRedDisappearTime = millis(); // 记录红球消失的时间点
+      console.log("场上没有红色球了！等待5秒后重置...");
+    }
+    
+    if (!hasExecuted) { // 只执行一次初始随机红色球的生成
+      let randomNumber = floor(random(1, Networkdensity + 1));
+      for (let circle1 of circles) {
+        if(circle1.no === randomNumber) {
+          circle1.color = type[1];
+          circle1.redStartTime = millis();
+        }
+      }
+      hasExecuted = true;
+    } else {
+      let currentTime = millis();
+      let waitTime = currentTime - lastRedDisappearTime;
+      
+      if (waitTime >= 5000) { 
+        // 重置所有球为蓝色
+        for (let circle of circles) {
+          circle.color = type[0];
+          circle.Propagationvalue = 0;
+        }
+        
+        // 随机选择一个球变为红色
+        let randomNumber = floor(random(1, Networkdensity + 1));
+        for (let circle1 of circles) {
+          if(circle1.no === randomNumber) {
+            circle1.color = type[1];
+            circle1.redStartTime = millis();
+          }
+        }
+        lastRedDisappearTime = null; // 重置消失时间
+        console.log("5秒已到,重置完成,新的红色球:", randomNumber);
       }
     }
   }
 }
+
+function redtogray() {
+  let currentTime = millis();
+  
+  for (let circle of circles) {
+    if (circle.color === type[1] && circle.redStartTime) {
+      let elapsedTime = currentTime - circle.redStartTime;  // 计算变红后经过的时间
+      
+      if (elapsedTime >= Decayprobability)         //衰退概率  
+        circle.color = type[2];    
+      }
+    }
+  }
+
+
