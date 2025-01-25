@@ -1,12 +1,13 @@
 /*
+
 用三种颜色蓝,红,灰色分别代表未接触,已传播,已衰退
 每个个体有
-阈值代表被影响的程度
-传播概率
-衰退概率
-传播范围
-扩散快慢
-网络密度
+传播阈值  按钮
+衰退时间  
+传播范围  电位器
+扩散快慢  电位器
+background  light-dependent resistor
+网络密度    light-dependent resistor
 (超级传播者)
 
 
@@ -25,11 +26,11 @@ let type = ['blue','red','gray'] ;
 let Diffusionrate = 1;      //扩散快慢
 let Propagationvalue = 0;   //传播值
 let thresholdvalue = 2;     //传播阈值
-let Informationnum = 1;     //信息源
+//let Informationnum = 1;     //信息源
 let Networkdensity ;    //网络密度
 let timeThreshold = 3000;   //时间阈值ms
 let staretime = 0;          // 程序开始时间
-let Decayprobability = 5000;         //衰退概率
+let Decayprobability = 5;         //衰退概率
 let canvasX,canvasY;
 
 let graymaxradius = 100;    //传播范围
@@ -56,7 +57,15 @@ function setup() {
   serial.on("error", gotError);
 
 
-  generatecircles(10); 
+  generatecircles(10,1); 
+
+  thresholdSlider = createSlider(1, 50, thresholdvalue, 1);
+  thresholdSlider.position(20, 110); // 设置滑动条的位置
+  thresholdSlider.style('width', '200px'); // 设置滑动条的宽度
+
+  DecaySlider = createSlider(1, 50, Decayprobability, 1);
+  DecaySlider.position(20, 150); // 设置滑动条的位置
+  DecaySlider.style('width', '200px'); // 设置滑动条的宽度
  
 
   //初始选择一个红色小球
@@ -75,12 +84,12 @@ function draw() {
 
   Networkdensity = max(Networkdensity, 1); // Networkdensity >= 1
   Networkdensity = int(map(sensorvalue, 860, 1020, 1, 20)); 
-
+  Diffusionrate = map(potvalue, 0, 1023, 0, 5);
 
   graymaxradius = map(potvalue, 0, 1023, 0, 200); 
   //只在密度发生变化时重新生成小球
   if (Networkdensity !== circles.length) {
-    generatecircles(Networkdensity);
+    generatecircles(Networkdensity,Diffusionrate);
   }
 
   let backgroundvalue = map(sensorvalue, 860, 1020, 0, 1024)
@@ -97,14 +106,18 @@ function draw() {
   redtogray();
   
   //console.log(circles[0]);
-
+  thresholdvalue = thresholdSlider.value()*10;
+  Decayprobability = DecaySlider.value()*1000;
  
   fill(0);
   textSize(16);
   text(`Sensor Value: ${sensorvalue}`, 100, 30);
   text(`Pot Value: ${potvalue}`, 100, 50);
-  console.log("Networkdensity:",Networkdensity);
-
+  text(`Threshold Value: ${thresholdvalue}`, 100, 80);
+  text(`Decay Time: ${ Decayprobability}`, 100, 120);
+ 
+  console.log("Networkdensity:",Networkdensity,"Diffusionrate:",Diffusionrate);
+  //console.log("thresholdvalue:",thresholdvalue);
 
 
 }
@@ -146,10 +159,10 @@ function gotError(err) {
 
 
 
-function generatecircles(num){
+function generatecircles(num,speed){
   let Propagationprobability;   //传播概率
   let propagationrange = graymaxradius;         //传播范围
-  
+  Diffusionrate = speed;
   let no = num;
 
   circles = [];
@@ -159,14 +172,14 @@ function generatecircles(num){
       no:i+1,
       positonX:random(50,canvasX-50),
       positonY:random(50,canvasY-50),
-      dx:random(-Diffusionrate, Diffusionrate), //x方向速度
-      dy:random(-Diffusionrate, Diffusionrate), //y方向速度
+      dx:random(-speed, speed), //x方向速度
+      dy:random(-speed, speed), //y方向速度
       radius:50,
       staretime:staretime,
       Propagationprobability,
       Decayprobability:Decayprobability,
       propagationrange:graymaxradius,
-      Diffusionrate:Diffusionrate,
+      Diffusionrate:speed,
       Propagationvalue:Propagationvalue,
       color:type[0],
       startTime: millis(), 
@@ -280,6 +293,7 @@ function bluetored() {
           if (circle1.Propagationvalue >= thresholdvalue) {
             circle1.color = type[1];
             circle1.redStartTime = millis();   // 记录变红的时间点
+            console.log("thresholdvalue",thresholdvalue);
           }
         }
       }
