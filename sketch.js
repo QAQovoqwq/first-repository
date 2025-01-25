@@ -16,6 +16,7 @@
 
 let serial;
 let sensorvalue = 0;//860~1200
+let potvalue = 0;   //0~1023
 
 //variable
 
@@ -39,9 +40,6 @@ let hasExecuted = false;
 let lastRedDisappearTime = null; //最后一个红球消失的时间
 let lastUpdateTime = 0;
 
-// let shouldUpdateCircles = false;
-// let updateInterval = 5000;
-
 
 function setup() {
 
@@ -50,25 +48,22 @@ function setup() {
   // canvasX = 800;
   // canvasY = 800;
   createCanvas(canvasX, canvasY);
-  generatecircles();
   staretime = millis();
-
-  //Networkdensity = map(sensorvalue,860,1020,10,50,true);
-  //Networkdensity = int((sensorvalue - 850)/10);
-  
-
 
   serial = new p5.SerialPort();
   serial.open("COM7"); 
   serial.on("data", gotData); // 当接收到数据时调用
-  serial.on("error", gotError); // 当发生错误时调用
+  serial.on("error", gotError);
 
-  generatecircles(10); // 初始化生成小球
-  // [改动1]: 初始选择一个红色小球
-  let randomNumber = floor(random(1, 11)); // 假设初始有 10 个小球
+
+  generatecircles(10); 
+ 
+
+  //初始选择一个红色小球
+  let randomNumber = floor(random(1, 11)); 
   for (let circle1 of circles) {
     if (circle1.no === randomNumber) {
-      circle1.color = type[1]; // 将一个小球设为红色
+      circle1.color = type[1]; 
       circle1.redStartTime = millis(); // 记录变红时间
     }
   }
@@ -78,11 +73,20 @@ function setup() {
 
 function draw() {
 
-  Networkdensity=10;
-  
+  Networkdensity = max(Networkdensity, 1); // Networkdensity >= 1
+  Networkdensity = int(map(sensorvalue, 860, 1020, 1, 20)); 
 
+
+  graymaxradius = map(potvalue, 0, 1023, 0, 200); 
+  //只在密度发生变化时重新生成小球
+  if (Networkdensity !== circles.length) {
+    generatecircles(Networkdensity);
+  }
+
+  let backgroundvalue = map(sensorvalue, 860, 1020, 0, 1024)
+  const backgroundColor = getBackgroundColor(backgroundvalue);
  
-  background(240);
+  background(backgroundColor.r, backgroundColor.g, backgroundColor.b);
   redaddrange();
   drawcircle();
   movecircle();
@@ -95,12 +99,11 @@ function draw() {
   //console.log(circles[0]);
 
  
-  
   fill(0);
   textSize(16);
-  text(`Sensor Value: ${sensorvalue}`, 20, 30);
-  console.log(sensorvalue);
-  console.log(Networkdensity);
+  text(`Sensor Value: ${sensorvalue}`, 100, 30);
+  text(`Pot Value: ${potvalue}`, 100, 50);
+  console.log("Networkdensity:",Networkdensity);
 
 
 
@@ -108,11 +111,34 @@ function draw() {
 function gotData() {
   let data = serial.readLine(); // 从串口读取一行数据
   if (data.length > 0) {
-    sensorvalue = int(data.trim()); // 将数据转换为整数
-    console.log("Received:", sensorvalue);
+    data = data.trim();
+    console.log("Raw Data:", data);
+
     
+    if (data.includes(",") && data.includes(":")) {
+      let values = data.split(","); 
+      values.forEach((pair) => {
+        let [key, value] = pair.split(":"); 
+        value = parseInt(value, 10); // 转换为整数
+
+        if (!isNaN(value)) { // 确保值有效
+          if (key === "S") {
+            sensorvalue = constrain(value, 860, 1200); 
+          } else if (key === "P") {
+            potvalue = constrain(value, 0, 1023); 
+          }
+        } else {
+          console.warn(`Invalid value for key ${key}:`, value);
+        }
+      });
+    } else {
+      console.warn("Malformed data received:", data); 
+    }
+
+    console.log("Sensor Value:", sensorvalue, "Pot Value:", potvalue);
   }
 }
+
 
 function gotError(err) {
   console.error("Serial Port Error:", err);
@@ -120,15 +146,15 @@ function gotError(err) {
 
 
 
-function generatecircles(Networkdensity){
+function generatecircles(num){
   let Propagationprobability;   //传播概率
   let propagationrange = graymaxradius;         //传播范围
   
-  let no = Networkdensity;
+  let no = num;
 
   circles = [];
 
-  for(let i = 0; i < Networkdensity; i++) {
+  for(let i = 0; i < num; i++) {
     let circledata = {
       no:i+1,
       positonX:random(50,canvasX-50),
@@ -261,76 +287,31 @@ function bluetored() {
   }
 
 
-// function Informationsource() { 
-//   let hasRedCircle = circles.some(circle => circle.color === type[1]);
-  
-//   if (!hasRedCircle) {
-//     if (lastRedDisappearTime === null) {
-//       lastRedDisappearTime = millis(); // 记录红球消失时间
-//       console.log("场上没有红色球了,等待5秒后重置...");
-//     }
-    
-//     if (!hasExecuted) { // 执行一次初始红色球
-//       let randomNumber = floor(random(1, Networkdensity + 1));
-//       for (let circle1 of circles) {
-//         if(circle1.no === randomNumber) {
-//           circle1.color = type[1];
-//           circle1.redStartTime = millis();
-//         }
-//       }
-//       hasExecuted = true;
-//     } else {
-//       let currentTime = millis();
-//       let waitTime = currentTime - lastRedDisappearTime;
-      
-//       if (waitTime >= 5000) { 
-//         // 重置所有球为蓝色
-//         for (let circle of circles) {
-//           circle.color = type[0];
-//           circle.Propagationvalue = 0;
-//         }
-        
-//         // 随机选择一个球变为红色
-//         let randomNumber = floor(random(1, Networkdensity + 1));
-//         for (let circle1 of circles) {
-//           if(circle1.no === randomNumber) {
-//             circle1.color = type[1];
-//             circle1.redStartTime = millis();
-//           }
-//         }
-//         lastRedDisappearTime = null; // 重置消失时间
-//         console.log("5秒已到,重置完成,新的红色球:", randomNumber);
-//       }
-//     }
-//   }
-// }
 function Informationsource() {
   // 检查是否存在红色小球
-  let hasRedCircle = circles.some(circle => circle.color === type[1]); // [改动1]: 检查是否有红色小球
-
-  // 如果没有红色小球
+  let hasRedCircle = circles.some(circle => circle.color === type[1]); 
   if (!hasRedCircle) {
-    // 如果这是第一次检测到没有红色小球
-    if (lastRedDisappearTime === null) { // [改动2]: 初始化红球消失时间，只记录一次
+    
+    if (lastRedDisappearTime === null) { 
       lastRedDisappearTime = millis(); // 记录红球消失的时间
       console.log("场上没有红色球了,准备重置...");
     }
 
     // 检查是否所有蓝色小球已重置完成
-    let allBlue = circles.every(circle => circle.color === type[0]); // [改动3]: 判断是否所有小球都变为蓝色
+    let allBlue = circles.every(circle => circle.color === type[0]);
 
     // 如果所有小球已重置为蓝色
-    if (allBlue) { // [改动4]: 如果所有小球为蓝色，则重新生成一个红色小球
+    if (allBlue) { 
       console.log("所有小球已重置为蓝色，随机选择一个变为红色...");
       let randomNumber = floor(random(1, Networkdensity + 1)); // 随机选择一个小球编号
       for (let circle1 of circles) {
-        if (circle1.no === randomNumber) { // [改动5]: 将随机编号的小球变为红色
-          circle1.color = type[1]; // 将其变为红色
-          circle1.redStartTime = millis(); // 记录变红时间
+        if (circle1.no === randomNumber) {
+          circle1.color = type[1]; 
+          circle1.redStartTime = millis(); 
         }
       }
-      lastRedDisappearTime = null; // [改动6]: 重置红球消失时间，避免重复初始化
-      hasExecuted = true; // [改动7]: 标记初始化完成
+      lastRedDisappearTime = null; 
+      hasExecuted = true;
     }
   }
 }
@@ -344,11 +325,32 @@ function redtogray() {
     if (circle.color === type[1] && circle.redStartTime) {
       let elapsedTime = currentTime - circle.redStartTime;  // 计算变红后经过的时间
       
-      if (elapsedTime >= Decayprobability)         //衰退概率  
+      if (elapsedTime >= Decayprobability)//衰退概率  
         circle.color = type[2];  
          
       }
     }
   }
 
+function getBackgroundColor(sensorValue) {
+  let r, g, b;
 
+  if (sensorValue < 300) {
+    // 夜晚阶段（深蓝到浅蓝，降低饱和度）
+    r = map(sensorValue, 0, 300, 40, 80); 
+    g = map(sensorValue, 0, 300, 40, 90); 
+    b = map(sensorValue, 0, 300, 90, 150); 
+  } else if (sensorValue < 700) {
+    // 黄昏阶段（浅蓝到橙黄，降低饱和度）
+    r = map(sensorValue, 300, 700, 120, 220); 
+    g = map(sensorValue, 300, 700, 100, 140); 
+    b = map(sensorValue, 300, 700, 150, 90); 
+  } else {
+    // 白天阶段（橙黄到白色，接近中性色调）
+    r = map(sensorValue, 700, 1023, 220, 255); 
+    g = map(sensorValue, 700, 1023, 140, 240); 
+    b = map(sensorValue, 700, 1023, 90, 230); 
+  }
+  return { r, g, b };
+
+}
